@@ -72,7 +72,7 @@ SymbolParser::SymbolParser()
 		THROW_LAST_ERROR_IF(GetModuleFileName(wil::GetModuleInstanceHandle(), curDir, MAX_PATH) == 0);
 		THROW_IF_FAILED(PathCchRemoveFileSpec(curDir, MAX_PATH));
 
-		const auto symPath = std::wstring{ L"SRV*" } + curDir + L"\\symbols";
+		const auto symPath = std::wstring{ L"SRV*C:\\ProgramData\\Windhawk\\Engine\\Symbols\\" };
 		THROW_IF_WIN32_BOOL_FALSE(SymSetSearchPathW(GetCurrentProcess(), symPath.c_str()));
 	}
 	catch (...)

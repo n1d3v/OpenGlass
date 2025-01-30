@@ -280,7 +280,7 @@ HRESULT Server::Run()
 			&attributes
 		)
 	};
-	wil::unique_handle injectionThread{ CreateThread(nullptr, 0, InjectionThreadProc, nullptr, 0, nullptr) };
+	/* wil::unique_handle injectionThread{CreateThread(nullptr, 0, InjectionThreadProc, nullptr, 0, nullptr)}; */
 
 	bool stop{ false };
 	while (!stop)
@@ -302,11 +302,11 @@ HRESULT Server::Run()
 #endif
 					THROW_IF_FAILED(DuplicateUserRegistryKeyToDwm(content));
 				}
-				else
+/*				else
 				{
 					QueueUserAPC([](ULONG_PTR) {g_serverClosed = true; }, injectionThread.get(), 0);
 					WaitForSingleObject(injectionThread.get(), INFINITE);
-				}
+				}*/
 				THROW_IF_WIN32_BOOL_FALSE(WriteFile(pipe.get(), &content, sizeof(content), nullptr, nullptr));
 				THROW_IF_WIN32_BOOL_FALSE(FlushFileBuffers(pipe.get()));
 #ifdef _DEBUG

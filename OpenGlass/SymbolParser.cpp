@@ -50,7 +50,7 @@ HMODULE WINAPI SymbolParser::MyLoadLibraryExW(
 	static const auto s_symsrvCurFullPath = Utils::make_current_folder_file_wstring(L"symsrv.dll");
 	if (
 		!_wcsicmp(lpLibFileName, s_symsrvSysFullPath.c_str())
-	)
+		)
 	{
 		return LoadLibraryW(s_symsrvCurFullPath.c_str());
 	}
@@ -72,7 +72,9 @@ SymbolParser::SymbolParser()
 		THROW_LAST_ERROR_IF(GetModuleFileName(wil::GetModuleInstanceHandle(), curDir, MAX_PATH) == 0);
 		THROW_IF_FAILED(PathCchRemoveFileSpec(curDir, MAX_PATH));
 
-		const auto symPath = std::wstring{ L"SRV*C:\\ProgramData\\Windhawk\\Engine\\Symbols\\" };
+		WCHAR programData[MAX_PATH + 1]{};
+		THROW_LAST_ERROR_IF(GetEnvironmentVariableW(L"ProgramData", programData, MAX_PATH) == 0);
+		const auto symPath{ std::wstring{programData} + L"\\Windhawk\\Engine\\Symbols;SRV*" + curDir + L"\\symbols" };
 		THROW_IF_WIN32_BOOL_FALSE(SymSetSearchPathW(GetCurrentProcess(), symPath.c_str()));
 	}
 	catch (...)
@@ -99,13 +101,13 @@ HRESULT SymbolParser::Walk(
 	MODULEINFO modInfo{};
 
 	auto symCleanUp = wil::scope_exit([&]
-	{
-		if (dllBase != 0)
 		{
-			SymUnloadModule64(GetCurrentProcess(), dllBase);
-			dllBase = 0;
-		}
-	});
+			if (dllBase != 0)
+			{
+				SymUnloadModule64(GetCurrentProcess(), dllBase);
+				dllBase = 0;
+			}
+		});
 
 	THROW_HR_IF(E_INVALIDARG, dllName.empty());
 
@@ -123,15 +125,17 @@ HRESULT SymbolParser::Walk(
 		THROW_LAST_ERROR_IF(GetModuleFileName(wil::GetModuleInstanceHandle(), curDir, MAX_PATH) == 0);
 		THROW_IF_FAILED(PathCchRemoveFileSpec(curDir, MAX_PATH));
 
-		const auto symPath = std::wstring{ L"SRV*" } + curDir + L"\\symbols*http://msdl.microsoft.com/download/symbols";
+		WCHAR programData[MAX_PATH + 1]{};
+		THROW_LAST_ERROR_IF(GetEnvironmentVariableW(L"ProgramData", programData, MAX_PATH) == 0);
+		const auto symPath{ std::wstring{ L"SRV*"} + programData + L"\\Windhawk\\Engine\\Symbols;SRV*" + curDir + L"\\symbols*http://msdl.microsoft.com/download/symbols" };
 
 		DWORD options = SymSetOptions(SymGetOptions() | SYMOPT_DEBUG);
 
 		auto cleanUp = wil::scope_exit([&]
-		{
-			SymSetOptions(options);
-			m_downloadNotifyCallback = nullptr;
-		});
+			{
+				SymSetOptions(options);
+				m_downloadNotifyCallback = nullptr;
+			});
 
 		m_downloadNotifyCallback = downloadNotifyCallback;
 		m_currentModule = dllName;

@@ -1,9 +1,11 @@
 # OpenGlass
-A replica of the dead software glass8, also known as the upstream project of [DWMBlurGlass](https://github.com/Maplespe/DWMBlurGlass).  
+A replica of the dead software glass8, also known as the upstream project of [DWMBlurGlass](https://github.com/Maplespe/DWMBlurGlass). This is a fork improving the performance and stability of OpenGlass.
 
-This branch does not rely on `dcomp` and `Windows.UI.Composition` and instead uses raw Direct2D to leverage better performance than the master branch, however due to it's early nature you may encounter more bugs and crashes. Currently this branch only supports Windows 10 2004-22H2.
+This branch uses raw Direct2D to leverage better performance than the master branch (You can find the master branch [here](https://github.com/ALTaleX531/OpenGlass/tree/master)), however due to it's early nature you may encounter more bugs and crashes. Currently this branch only supports Windows 10 2004-22H2.
+
+You can use DWM Tweaker (Windhawk mod) with this build of OpenGlass! You may find it [here](https://files.catbox.moe/pi6djy.cpp) (Thank you Tech Stuff!) (Paste the code from the .cpp file to Windhawk's development environment)
 > [!IMPORTANT]  
-> This software is intended for advanced users only. If you are a beginner and you do not have deeper knowledge of Windows (such as registry editing etc.) you should not install this software.  
+> This software is intended for advanced users only. If you are a beginner and you do not have deeper knowledge of Windows (such as registry editing etc.) you shouldn't use this. You can use [DWMBlurGlass](https://github.com/Maplespe/DWMBlurGlass) instead.  
 
 > [!WARNING]   
 > OpenGlass does not support and is not intended to support Windows Insider Preview, so if you want to use it in these Windows versions please do it at your own risk. It will do nothing if it isn't compatible.

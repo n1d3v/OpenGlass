@@ -17,7 +17,18 @@ You can use DWM Tweaker (Windhawk mod) with this build of OpenGlass! You may fin
 > *additional software used: [Windhawk](https://windhawk.net/), [Aero Window Manager](https://github.com/Dulappy/aero-window-manager) by @Dulappy*
 
 ## Install instructions
-Go look at the official `legacy` branch of OpenGlass [here](https://github.com/ALTaleX531/OpenGlass?tab=readme-ov-file#how-to-use-this-software)
+Go look at the official `legacy` branch of OpenGlass [here](https://github.com/ALTaleX531/OpenGlass?tab=readme-ov-file#how-to-use-this-software). It is recommended to use the Windhawk method for better overall stability.
+### Windhawk method (DWM Tweaker)
+> [!IMPORTANT]  
+> Make sure OpenGlass is **not** running before doing this, otherwise some stuff can break (Not permament damage)
+1. Download both DWM Tweaker (Found at top of this README) and the latest build of OpenGlass here.
+2. Extract the build of OpenGlass you have downloaded.
+3. Take the `OpenGlass.dll` file and put it in `C:\ProgramData\Windhawk\Engine\ModsWritable` (You may need to create the `ModsWritable` directory).
+4. Rename the DLL to `OpenGlassOpt.dll`.
+5. Go to `regedit.exe` and locate `HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\DWM` and create the DWORD `DisableGlassInjection` and set it to 1.
+6. Open Windhawk and click "Create a New mod" and then paste the code from `dwmtweaker.cpp` into there.
+7. Compile the mod and after it downloads symbols it should work. You can use the settings from [here]() to make it look like Windows 7.
+
 ## Documentation
 The legacy branch can use some of the features of the master branch. Options which are not listed below are not supported in the Legacy branch, vice versa. 
 

@@ -3,7 +3,7 @@ A replica of the dead software glass8, also known as the upstream project of [DW
 
 This branch uses raw Direct2D to leverage better performance than the master branch (You can find the master branch [here](https://github.com/ALTaleX531/OpenGlass/tree/master)), however due to it's early nature you may encounter more bugs and crashes. Currently this branch only supports Windows 10 2004-22H2.
 
-You can use DWM Tweaker (Windhawk mod) with this build of OpenGlass! You may find it [here](https://files.catbox.moe/pi6djy.cpp) (Thank you Tech Stuff!) (Paste the code from the .cpp file to Windhawk's development environment)
+You can use DWM Tweaker (Windhawk mod) with this build of OpenGlass! You may find it [here](https://raw.githubusercontent.com/n1d3v/OpenGlass/refs/heads/legacy-optimized/Files/dwmtweaker.cpp) (Thank you Tech Stuff!) (Paste the code from the .cpp file to Windhawk's development environment)
 > [!IMPORTANT]  
 > This software is intended for advanced users only. If you are a beginner and you do not have deeper knowledge of Windows (such as registry editing etc.) you shouldn't use this. You can use [DWMBlurGlass](https://github.com/Maplespe/DWMBlurGlass) instead.  
 
@@ -27,7 +27,10 @@ Go look at the official `legacy` branch of OpenGlass [here](https://github.com/A
 4. Rename the DLL to `OpenGlassOpt.dll`.
 5. Go to `regedit.exe` and locate `HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\DWM` and create the DWORD `DisableGlassInjection` and set it to 1.
 6. Open Windhawk and click "Create a New mod" and then paste the code from `dwmtweaker.cpp` into there.
-7. Compile the mod and after it downloads symbols it should work. You can use the settings from [here]() to make it look like Windows 7.
+7. Compile the mod and after it downloads symbols it should work. You can use the settings from [here](https://raw.githubusercontent.com/n1d3v/OpenGlass/refs/heads/legacy-optimized/Files/settings.reg) to make it look like Windows 7.
+
+> [!NOTE]  
+> To save DWM Tweaker and the default settings raw GitHub files right click and click `Save as`. Another way is to copy the file contents and create the file yourself.
 
 ## Documentation
 The legacy branch can use some of the features of the master branch. Options which are not listed below are not supported in the Legacy branch, vice versa. 

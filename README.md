@@ -11,7 +11,7 @@ You can use DWM Tweaker (Windhawk mod) with this build of OpenGlass! You may fin
 > OpenGlass does not support and is not intended to support Windows Insider Preview, so if you want to use it in these Windows versions please do it at your own risk. It will do nothing if it isn't compatible.
 
 ## Demonstration
-![image](https://github.com/user-attachments/assets/6f22df01-f2cd-4d68-ba13-735ac2e3ef89)
+![demo](https://github.com/user-attachments/assets/faa1ca88-4f95-4287-a78c-2d8171092e73)
 > *.msstyles theme used for screenshots: [Aero10 by vaporvance](https://www.deviantart.com/vaporvance/art/Aero10-for-Windows-10-1903-22H2-909711949)*
 
 > *additional software used: [Windhawk](https://windhawk.net/), [Aero Window Manager](https://github.com/Dulappy/aero-window-manager) by @Dulappy, [explorer7](https://github.com/explorer7-team/source) by the explorer7 team*
@@ -77,15 +77,12 @@ PostMessage(FindWindow(TEXT("Dwm"), nullptr), WM_DWMCOLORIZATIONCHANGED, 0, 0); 
 ```
 
 ## Dependencies and References
-### [Banner for OpenGlass](https://github.com/ALTaleX531/OpenGlass/discussions/11)
-Provided by [@aubymori](https://github.com/aubymori)  
-Wallpaper: [metalheart jawn #2](https://www.deviantart.com/kfh83/art/metalheart-jawn-2-1068250045) by [@kfh83](https://github.com/kfh83)
 ### [Microsoft Research Detours Package](https://github.com/microsoft/Detours)  
 Detours is a software package for monitoring and instrumenting API calls on Windows.  
 ### [VC-LTL - An elegant way to compile lighter binaries.](https://github.com/Chuyu-Team/VC-LTL5)  
 VC-LTL is an open source CRT library based on the MS VCRT that reduce program binary size and say goodbye to Microsoft runtime DLLs, such as msvcr120.dll, api-ms-win-crt-time-l1-1-0.dll and other dependencies.  
 ### [Windows Implementation Libraries (WIL)](https://github.com/Microsoft/wil)  
-The Windows Implementation Libraries (WIL) is a header-only C++ library created to make life easier for developers on Windows through readable type-safe C++ interfaces for common Windows coding patterns.  
+The Windows Implementation Libraries (WIL) is a header-only C++ library created to make life easier for developers on Windows through readable type-safe C++ interfaces for common Windows coding patterns. 
 ### [Interop Compositor](https://blog.adeltax.com/interopcompositor-and-coredispatcher/)
 Saved me some decompiling and reverse engineering time thanks to ADeltaX's blog!
 ### [Win32Acrylic](https://github.com/ALTaleX531/Win32Acrylic)
@@ -94,3 +91,5 @@ Win2D sucks!
 The predecessor of this project.
 ### [Loading Visual Styles Per-Application](https://winclassic.net/thread/2178/loading-visual-styles-application)
 It is possible for an application to load a style on a per-application basis using an undocumented API.
+### Wallpaper
+Wallpaper is from the Architectures theme from Windows 7.

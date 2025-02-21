@@ -2,6 +2,7 @@
 #include "GeometryRecorder.hpp"
 
 using namespace OpenGlass;
+
 namespace OpenGlass::GeometryRecorder
 {
 	HRESULT STDMETHODCALLTYPE MyResourceHelper_CreateGeometryFromHRGN(
@@ -23,6 +24,7 @@ namespace OpenGlass::GeometryRecorder
 		LPCRECT lprc,
 		UINT count
 	);
+
 	decltype(&MyResourceHelper_CreateGeometryFromHRGN) g_ResourceHelper_CreateGeometryFromHRGN_Org{ nullptr };
 	decltype(&MyResourceHelper_CreateRectangleGeometry) g_ResourceHelper_CreateRectangleGeometry_Org{ nullptr };
 	decltype(&MyResourceHelper_CreateCombinedGeometry) g_ResourceHelper_CreateCombinedGeometry_Org{ nullptr };
@@ -31,9 +33,9 @@ namespace OpenGlass::GeometryRecorder
 	size_t g_captureRef{ 0 };
 	std::unordered_map<uDwm::CBaseGeometryProxy*, wil::unique_hrgn> g_geometryMap{};
 
-	void RecordGeometry(uDwm::CBaseGeometryProxy* geometry, HRGN region)
+	inline void RecordGeometry(uDwm::CBaseGeometryProxy* geometry, HRGN region)
 	{
-		g_geometryMap.insert_or_assign(geometry, std::move(wil::unique_hrgn{ region }));
+		g_geometryMap[geometry] = wil::unique_hrgn{ region };
 	}
 }
 
@@ -43,13 +45,11 @@ HRESULT STDMETHODCALLTYPE GeometryRecorder::MyResourceHelper_CreateGeometryFromH
 	uDwm::CRgnGeometryProxy** geometry
 )
 {
-	HRESULT hr{ g_ResourceHelper_CreateGeometryFromHRGN_Org(hrgn, geometry) };
-
+	HRESULT hr = g_ResourceHelper_CreateGeometryFromHRGN_Org(hrgn, geometry);
 	if (SUCCEEDED(hr) && geometry && *geometry && g_captureRef)
 	{
-		HRGN region{ CreateRectRgn(0, 0, 0, 0) };
-		CopyRgn(region, hrgn);
-		RecordGeometry(*geometry, region);
+		RecordGeometry(*geometry, CreateRectRgn(0, 0, 0, 0));
+		CopyRgn(g_geometryMap[*geometry].get(), hrgn);
 	}
 
 	return hr;
@@ -61,12 +61,10 @@ HRESULT STDMETHODCALLTYPE GeometryRecorder::MyResourceHelper_CreateRectangleGeom
 	uDwm::CRgnGeometryProxy** geometry
 )
 {
-	HRESULT hr{ g_ResourceHelper_CreateRectangleGeometry_Org(lprc, geometry) };
-
+	HRESULT hr = g_ResourceHelper_CreateRectangleGeometry_Org(lprc, geometry);
 	if (SUCCEEDED(hr) && geometry && *geometry && g_captureRef)
 	{
-		HRGN region{ CreateRectRgnIndirect(lprc) };
-		RecordGeometry(*geometry, region);
+		RecordGeometry(*geometry, CreateRectRgnIndirect(lprc));
 	}
 
 	return hr;
@@ -80,18 +78,12 @@ HRESULT STDMETHODCALLTYPE GeometryRecorder::MyResourceHelper_CreateCombinedGeome
 	uDwm::CCombinedGeometryProxy** combinedGeometry
 )
 {
-	HRESULT hr{ g_ResourceHelper_CreateCombinedGeometry_Org(geometry1, geometry2, combineMode, combinedGeometry) };
-
+	HRESULT hr = g_ResourceHelper_CreateCombinedGeometry_Org(geometry1, geometry2, combineMode, combinedGeometry);
 	if (SUCCEEDED(hr) && combinedGeometry && *combinedGeometry && g_captureRef)
 	{
-		HRGN region{ CreateRectRgn(0, 0, 0, 0) };
-		CombineRgn(
-			region,
-			GetRegionFromGeometry(geometry1),
-			GetRegionFromGeometry(geometry2),
-			RGN_AND
-		);
-		RecordGeometry(*combinedGeometry, region);
+		wil::unique_hrgn region{ CreateRectRgn(0, 0, 0, 0) };
+		CombineRgn(region.get(), GetRegionFromGeometry(geometry1), GetRegionFromGeometry(geometry2), RGN_AND);
+		RecordGeometry(*combinedGeometry, region.release());
 	}
 
 	return hr;
@@ -104,20 +96,10 @@ HRESULT STDMETHODCALLTYPE GeometryRecorder::MyCRgnGeometryProxy_Update(
 	UINT count
 )
 {
-	HRESULT hr{ g_CRgnGeometryProxy_Update_Org(This, lprc, count) };
-
+	HRESULT hr = g_CRgnGeometryProxy_Update_Org(This, lprc, count);
 	if (SUCCEEDED(hr))
 	{
-		if (lprc && count)
-		{
-			HRGN region{ CreateRectRgnIndirect(lprc) };
-			RecordGeometry(This, region);
-		}
-		else
-		{
-			HRGN region{ CreateRectRgn(0, 0, 0, 0) };
-			RecordGeometry(This, region);
-		}
+		RecordGeometry(This, lprc && count ? CreateRectRgnIndirect(lprc) : CreateRectRgn(0, 0, 0, 0));
 	}
 
 	return hr;
@@ -125,18 +107,15 @@ HRESULT STDMETHODCALLTYPE GeometryRecorder::MyCRgnGeometryProxy_Update(
 
 void GeometryRecorder::BeginCapture()
 {
-	g_captureRef += 1;
+	++g_captureRef;
 }
+
 HRGN GeometryRecorder::GetRegionFromGeometry(uDwm::CBaseGeometryProxy* geometry)
 {
 	auto it = g_geometryMap.find(geometry);
-	if (it == g_geometryMap.end())
-	{
-		return nullptr;
-	}
-
-	return it->second.get();
+	return (it != g_geometryMap.end()) ? it->second.get() : nullptr;
 }
+
 size_t GeometryRecorder::GetGeometryCount()
 {
 	return g_geometryMap.size();
@@ -144,8 +123,7 @@ size_t GeometryRecorder::GetGeometryCount()
 
 void GeometryRecorder::EndCapture()
 {
-	g_captureRef -= 1;
-	if (g_captureRef == 0)
+	if (--g_captureRef == 0)
 	{
 		g_geometryMap.clear();
 	}
@@ -159,26 +137,27 @@ HRESULT GeometryRecorder::Startup()
 	uDwm::GetAddressFromSymbolMap("CRgnGeometryProxy::Update", g_CRgnGeometryProxy_Update_Org);
 
 	return HookHelper::Detours::Write([]()
-	{
-		HookHelper::Detours::Attach(&g_ResourceHelper_CreateGeometryFromHRGN_Org, MyResourceHelper_CreateGeometryFromHRGN);
-		HookHelper::Detours::Attach(&g_ResourceHelper_CreateRectangleGeometry_Org, MyResourceHelper_CreateRectangleGeometry);
-		HookHelper::Detours::Attach(&g_ResourceHelper_CreateCombinedGeometry_Org, MyResourceHelper_CreateCombinedGeometry);
-		if (os::buildNumber >= os::build_w11_21h2)
 		{
-			HookHelper::Detours::Attach(&g_CRgnGeometryProxy_Update_Org, MyCRgnGeometryProxy_Update);
-		}
-	});
+			HookHelper::Detours::Attach(&g_ResourceHelper_CreateGeometryFromHRGN_Org, MyResourceHelper_CreateGeometryFromHRGN);
+			HookHelper::Detours::Attach(&g_ResourceHelper_CreateRectangleGeometry_Org, MyResourceHelper_CreateRectangleGeometry);
+			HookHelper::Detours::Attach(&g_ResourceHelper_CreateCombinedGeometry_Org, MyResourceHelper_CreateCombinedGeometry);
+			if (os::buildNumber >= os::build_w11_21h2)
+			{
+				HookHelper::Detours::Attach(&g_CRgnGeometryProxy_Update_Org, MyCRgnGeometryProxy_Update);
+			}
+		});
 }
+
 void GeometryRecorder::Shutdown()
 {
 	HookHelper::Detours::Write([]()
-	{
-		HookHelper::Detours::Detach(&g_ResourceHelper_CreateGeometryFromHRGN_Org, MyResourceHelper_CreateGeometryFromHRGN);
-		HookHelper::Detours::Detach(&g_ResourceHelper_CreateRectangleGeometry_Org, MyResourceHelper_CreateRectangleGeometry);
-		HookHelper::Detours::Detach(&g_ResourceHelper_CreateCombinedGeometry_Org, MyResourceHelper_CreateCombinedGeometry);
-		if (os::buildNumber >= os::build_w11_21h2)
 		{
-			HookHelper::Detours::Detach(&g_CRgnGeometryProxy_Update_Org, MyCRgnGeometryProxy_Update);
-		}
-	});
+			HookHelper::Detours::Detach(&g_ResourceHelper_CreateGeometryFromHRGN_Org, MyResourceHelper_CreateGeometryFromHRGN);
+			HookHelper::Detours::Detach(&g_ResourceHelper_CreateRectangleGeometry_Org, MyResourceHelper_CreateRectangleGeometry);
+			HookHelper::Detours::Detach(&g_ResourceHelper_CreateCombinedGeometry_Org, MyResourceHelper_CreateCombinedGeometry);
+			if (os::buildNumber >= os::build_w11_21h2)
+			{
+				HookHelper::Detours::Detach(&g_CRgnGeometryProxy_Update_Org, MyCRgnGeometryProxy_Update);
+			}
+		});
 }

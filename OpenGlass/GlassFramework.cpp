@@ -26,10 +26,10 @@ namespace OpenGlass::GlassFramework
 
 	HRESULT STDMETHODCALLTYPE MyCLivePreview__UpdateGlassVisual(uDwm::CLivePreview* This);
 	HRESULT STDMETHODCALLTYPE MyCTopLevelWindow_CloneVisualTreeForLivePreview(
-		uDwm::CTopLevelWindow* This, 
-		bool cloneForReflection, 
-		bool reserved1, 
-		bool reserved2, 
+		uDwm::CTopLevelWindow* This,
+		bool cloneForReflection,
+		bool reserved1,
+		bool reserved2,
 		uDwm::CTopLevelWindow** cloned
 	);
 
@@ -68,24 +68,22 @@ HRGN WINAPI GlassFramework::MyCreateRoundRectRgn(int x1, int y1, int x2, int y2,
 	return g_CreateRoundRectRgn_Org(x1, y1, x2, y2, Shared::g_roundRectRadius, Shared::g_roundRectRadius);
 }
 
-// restore the blur region set by DwmEnableBlurBehind and make sure the region isn't overlap with the non client region
 HRESULT STDMETHODCALLTYPE GlassFramework::MyCDrawGeometryInstruction_Create(uDwm::CBaseLegacyMilBrushProxy* brush, uDwm::CBaseGeometryProxy* geometry, uDwm::CDrawGeometryInstruction** instruction)
 {
 	if (g_capturedWindow && g_capturedWindow->GetData()->GetHwnd() != uDwm::GetShellWindowForCurrentDesktop())
 	{
+		bool active = g_capturedWindow->TreatAsActiveWindow();
 		auto color =
 			Shared::g_forceAccentColorization ?
-			dwmcore::Convert_D2D1_COLOR_F_sRGB_To_D2D1_COLOR_F_scRGB(g_capturedWindow->TreatAsActiveWindow() ? Shared::g_accentColor : Shared::g_accentColorInactive) :
+			dwmcore::Convert_D2D1_COLOR_F_sRGB_To_D2D1_COLOR_F_scRGB(active ? Shared::g_accentColor : Shared::g_accentColorInactive) :
 			g_capturedWindow->GetTitlebarColorizationParameters()->getArgbcolor();
-		color.a = g_capturedWindow->TreatAsActiveWindow() ? 0.5f : 0.0f;
+		color.a = active ? 0.5f : 0.0f;
 		RETURN_IF_FAILED(reinterpret_cast<uDwm::CSolidColorLegacyMilBrushProxy*>(brush)->Update(1.0, color));
 	}
 
 	return g_CDrawGeometryInstruction_Create_Org(brush, geometry, instruction);
 }
 
-// convert the draw geometry instruction into draw glass instruction
-// and make sure the borders are splitted to improve performance
 HRESULT STDMETHODCALLTYPE GlassFramework::MyCTopLevelWindow_UpdateNCAreaBackground(uDwm::CTopLevelWindow* This)
 {
 	if (!Shared::IsBackdropAllowed())
@@ -102,11 +100,12 @@ HRESULT STDMETHODCALLTYPE GlassFramework::MyCTopLevelWindow_UpdateNCAreaBackgrou
 
 	if (auto brush = This->GetClientBlurVisualBrush(); brush)
 	{
+		bool active = This->TreatAsActiveWindow();
 		auto color =
 			Shared::g_forceAccentColorization ?
-			dwmcore::Convert_D2D1_COLOR_F_sRGB_To_D2D1_COLOR_F_scRGB(This->TreatAsActiveWindow() ? Shared::g_accentColor : Shared::g_accentColorInactive) :
+			dwmcore::Convert_D2D1_COLOR_F_sRGB_To_D2D1_COLOR_F_scRGB(active ? Shared::g_accentColor : Shared::g_accentColorInactive) :
 			This->GetTitlebarColorizationParameters()->getArgbcolor();
-		color.a = This->TreatAsActiveWindow() ? 0.5f : 0.0f;
+		color.a = active ? 0.5f : 0.0f;
 		LOG_IF_FAILED(brush->Update(1.0, color));
 	}
 	if (This->HasNonClientBackground())
@@ -130,8 +129,6 @@ HRESULT STDMETHODCALLTYPE GlassFramework::MyCTopLevelWindow_UpdateNCAreaBackgrou
 		if (SUCCEEDED(hr))
 		{
 			auto legacyVisualOverride = VisualManager::LegacyVisualOverrider::GetOrCreate(This, true);
-			// the titlebar region has been updated
-			// let's update our backdrop region
 			if (GeometryRecorder::GetGeometryCount() && legacyVisualOverride)
 			{
 				auto captionGeometry = This->GetCaptionGeometry();
@@ -139,7 +136,7 @@ HRESULT STDMETHODCALLTYPE GlassFramework::MyCTopLevelWindow_UpdateNCAreaBackgrou
 
 				HRGN captionRegion{ GeometryRecorder::GetRegionFromGeometry(captionGeometry) };
 				HRGN borderRegion{ GeometryRecorder::GetRegionFromGeometry(borderGeometry) };
-				
+
 				hr = legacyVisualOverride->UpdateNCBackground(captionRegion, borderRegion);
 			}
 		}
@@ -155,7 +152,6 @@ HRESULT STDMETHODCALLTYPE GlassFramework::MyCTopLevelWindow_UpdateNCAreaBackgrou
 	return hr;
 }
 
-// make the visual of DwmEnableBlurBehind visible
 HRESULT STDMETHODCALLTYPE GlassFramework::MyCTopLevelWindow_UpdateClientBlur(uDwm::CTopLevelWindow* This)
 {
 	if (!Shared::IsBackdropAllowed())
@@ -177,14 +173,9 @@ HRESULT STDMETHODCALLTYPE GlassFramework::MyCTopLevelWindow_UpdateClientBlur(uDw
 	return hr;
 }
 
-// convert accent_state=3 or 4 into 2 and replace its solid rectangle instruction into draw glass instruction
 HRESULT STDMETHODCALLTYPE GlassFramework::MyCAccent_UpdateAccentPolicy(uDwm::CAccent* This, LPCRECT lprc, uDwm::ACCENT_POLICY* policy, uDwm::CBaseGeometryProxy* geometry)
 {
-	if (!Shared::IsBackdropAllowed())
-	{
-		return g_CAccent_UpdateAccentPolicy_Org(This, lprc, policy, geometry);
-	}
-	if (!Shared::g_overrideAccent)
+	if (!Shared::IsBackdropAllowed() || !Shared::g_overrideAccent)
 	{
 		return g_CAccent_UpdateAccentPolicy_Org(This, lprc, policy, geometry);
 	}
@@ -206,22 +197,19 @@ HRESULT STDMETHODCALLTYPE GlassFramework::MyCAccent_UpdateAccentPolicy(uDwm::CAc
 
 HRESULT STDMETHODCALLTYPE GlassFramework::MyCAccent__UpdateSolidFill(uDwm::CAccent* This, uDwm::CRenderDataVisual* visual, DWORD color, const D2D1_RECT_F* lprc, float opacity)
 {
-	if (!Shared::IsBackdropAllowed())
+	if (!Shared::IsBackdropAllowed() || !Shared::g_overrideAccent)
 	{
 		return g_CAccent__UpdateSolidFill_Org(This, visual, color, lprc, opacity);
 	}
-	if (!Shared::g_overrideAccent)
-	{
-		return g_CAccent__UpdateSolidFill_Org(This, visual, color, lprc, opacity);
-	}
-	if (!This->GetHwnd())
+	auto hwnd = This->GetHwnd();
+	if (!hwnd)
 	{
 		return g_CAccent__UpdateSolidFill_Org(This, visual, color, lprc, opacity);
 	}
 	uDwm::CWindowData* data{ nullptr };
 	{
 		auto lock = wil::EnterCriticalSection(uDwm::CDesktopManager::s_csDwmInstance);
-		if (FAILED(uDwm::CDesktopManager::s_pDesktopManagerInstance->GetWindowList()->GetSyncedWindowDataByHwnd(This->GetHwnd(), &data)) || !data)
+		if (FAILED(uDwm::CDesktopManager::s_pDesktopManagerInstance->GetWindowList()->GetSyncedWindowDataByHwnd(hwnd, &data)) || !data)
 		{
 			return g_CAccent__UpdateSolidFill_Org(This, visual, color, lprc, opacity);
 		}
@@ -242,15 +230,7 @@ HRESULT STDMETHODCALLTYPE GlassFramework::MyCAccent__UpdateSolidFill(uDwm::CAcce
 
 HRESULT STDMETHODCALLTYPE GlassFramework::MyCRenderDataVisual_AddInstruction(uDwm::CRenderDataVisual* This, uDwm::CRenderDataInstruction* instruction)
 {
-	if (!Shared::IsBackdropAllowed())
-	{
-		return g_CRenderDataVisual_AddInstruction_Org(This, instruction);
-	}
-	if (!Shared::g_overrideAccent)
-	{
-		return g_CRenderDataVisual_AddInstruction_Org(This, instruction);
-	}
-	if (g_accentRenderDataVisual != This)
+	if (!Shared::IsBackdropAllowed() || !Shared::g_overrideAccent || g_accentRenderDataVisual != This)
 	{
 		return g_CRenderDataVisual_AddInstruction_Org(This, instruction);
 	}
@@ -269,16 +249,16 @@ HRESULT STDMETHODCALLTYPE GlassFramework::MyCRenderDataVisual_AddInstruction(uDw
 	RETURN_IF_FAILED(
 		uDwm::ResourceHelper::CreateGeometryFromHRGN(
 			wil::unique_hrgn
-			{ 
+			{
 				CreateRectRgn(
-					static_cast<LONG>(rectangle.left), 
-					static_cast<LONG>(rectangle.top), 
-					static_cast<LONG>(rectangle.right), 
+					static_cast<LONG>(rectangle.left),
+					static_cast<LONG>(rectangle.top),
+					static_cast<LONG>(rectangle.right),
 					static_cast<LONG>(rectangle.bottom)
-				) 
-			}.get(), 
-			rgnGeometry.put()
-		)
+				)
+			}.get(),
+					rgnGeometry.put()
+					)
 	);
 	winrt::com_ptr<uDwm::CSolidColorLegacyMilBrushProxy> solidBrush{ nullptr };
 	RETURN_IF_FAILED(
@@ -293,17 +273,6 @@ HRESULT STDMETHODCALLTYPE GlassFramework::MyCRenderDataVisual_AddInstruction(uDw
 	return g_CRenderDataVisual_AddInstruction_Org(This, drawInstruction.get());
 }
 
-// we trick dwm into thinking the window is using legacy nonclient background
-/*
-enum class BackgroundType
-{
-	Legacy,
-	Accent,
-	SystemBackdrop_BackdropMaterial,
-	SystemBackdrop_CaptionAccentColor,
-	SystemBackdrop_Default
-};
-*/
 DWORD STDMETHODCALLTYPE GlassFramework::MyCTopLevelWindow_CalculateBackgroundType(uDwm::CTopLevelWindow* This)
 {
 	if (!Shared::IsBackdropAllowed())
@@ -320,7 +289,6 @@ DWORD STDMETHODCALLTYPE GlassFramework::MyCTopLevelWindow_CalculateBackgroundTyp
 	return result;
 }
 
-// trick dwm into thinking the system backdrop is not exist
 HRESULT STDMETHODCALLTYPE GlassFramework::MyCTopLevelWindow_UpdateSystemBackdropVisual(uDwm::CTopLevelWindow* This)
 {
 	if (!Shared::IsBackdropAllowed())
@@ -335,7 +303,6 @@ HRESULT STDMETHODCALLTYPE GlassFramework::MyCTopLevelWindow_UpdateSystemBackdrop
 
 	HRESULT hr{ S_OK };
 	auto oldSystemBackdropType = *reinterpret_cast<DWORD*>(reinterpret_cast<ULONG_PTR>(data) + 204);
-	// trick dwm into thinking the window does not enable system backdrop
 	*reinterpret_cast<DWORD*>(reinterpret_cast<ULONG_PTR>(data) + 204) = 0;
 	hr = g_CTopLevelWindow_UpdateSystemBackdropVisual_Org(This);
 	*reinterpret_cast<DWORD*>(reinterpret_cast<ULONG_PTR>(data) + 204) = oldSystemBackdropType;
@@ -343,11 +310,10 @@ HRESULT STDMETHODCALLTYPE GlassFramework::MyCTopLevelWindow_UpdateSystemBackdrop
 	return hr;
 }
 
-// release resources
 void STDMETHODCALLTYPE GlassFramework::MyCTopLevelWindow_Destructor(uDwm::CTopLevelWindow* This)
 {
 	VisualManager::LegacyVisualOverrider::Remove(This);
-	return g_CTopLevelWindow_Destructor_Org(This);
+	g_CTopLevelWindow_Destructor_Org(This);
 }
 
 void STDMETHODCALLTYPE GlassFramework::MyCAnimatedGlassSheet_OnRectUpdated(uDwm::CAnimatedGlassSheet* This, LPCRECT lprc)
@@ -357,19 +323,20 @@ void STDMETHODCALLTYPE GlassFramework::MyCAnimatedGlassSheet_OnRectUpdated(uDwm:
 		LOG_IF_FAILED(sheetOverrider->OnRectUpdated(lprc));
 	}
 
-	return g_CAnimatedGlassSheet_OnRectUpdated_Org(This, lprc);
+	g_CAnimatedGlassSheet_OnRectUpdated_Org(This, lprc);
 }
+
 void STDMETHODCALLTYPE GlassFramework::MyCAnimatedGlassSheet_Destructor(uDwm::CAnimatedGlassSheet* This)
 {
 	VisualManager::AnimatedGlassSheetOverrider::Remove(This);
-	return g_CAnimatedGlassSheet_Destructor_Org(This);
+	g_CAnimatedGlassSheet_Destructor_Org(This);
 }
 
-// reserved
 HRESULT STDMETHODCALLTYPE GlassFramework::MyCLivePreview__UpdateGlassVisual(uDwm::CLivePreview* This)
 {
 	return g_CLivePreview__UpdateGlassVisual_Org(This);
 }
+
 HRESULT STDMETHODCALLTYPE GlassFramework::MyCTopLevelWindow_CloneVisualTreeForLivePreview(
 	uDwm::CTopLevelWindow* This,
 	bool cloneForReflection,
@@ -406,7 +373,7 @@ HRESULT STDMETHODCALLTYPE GlassFramework::MyCTopLevelWindow_CloneVisualTreeForLi
 		This->GetActualWindowRect(&windowRect, true, true, false);
 
 		wil::unique_hrgn region
-		{ 
+		{
 			CreateRoundRectRgn(
 				windowRect.left,
 				windowRect.top,
@@ -414,7 +381,7 @@ HRESULT STDMETHODCALLTYPE GlassFramework::MyCTopLevelWindow_CloneVisualTreeForLi
 				windowRect.bottom,
 				Shared::g_roundRectRadius,
 				Shared::g_roundRectRadius
-			) 
+			)
 		};
 		RETURN_LAST_ERROR_IF_NULL(region);
 
@@ -461,7 +428,8 @@ void GlassFramework::UpdateConfiguration(ConfigurationFramework::UpdateType type
 		Shared::g_overrideAccent = static_cast<bool>(ConfigurationFramework::DwmGetDwordFromHKCUAndHKLM(L"GlassOverrideAccent"));
 		Shared::g_roundRectRadius = static_cast<int>(ConfigurationFramework::DwmGetDwordFromHKCUAndHKLM(L"RoundRectRadius"));
 
-		if (Shared::g_forceAccentColorization = static_cast<bool>(ConfigurationFramework::DwmGetDwordFromHKCUAndHKLM(L"ForceAccentColorization")); Shared::g_forceAccentColorization)
+		Shared::g_forceAccentColorization = static_cast<bool>(ConfigurationFramework::DwmGetDwordFromHKCUAndHKLM(L"ForceAccentColorization"));
+		if (Shared::g_forceAccentColorization)
 		{
 			auto accentColor = ConfigurationFramework::DwmGetDwordFromHKCUAndHKLM(L"AccentColor");
 			auto accentColorInactive = ConfigurationFramework::DwmGetDwordFromHKCUAndHKLM(L"AccentColorInactive", accentColor);
@@ -470,7 +438,10 @@ void GlassFramework::UpdateConfiguration(ConfigurationFramework::UpdateType type
 		}
 
 		Shared::g_enableFullDirty = static_cast<bool>(ConfigurationFramework::DwmGetDwordFromHKCUAndHKLM(L"EnableFullDirty"));
-		Shared::g_enableFullDirty ? g_hackVisual.as<IDCompositionVisualDebug>()->EnableRedrawRegions() : g_hackVisual.as<IDCompositionVisualDebug>()->DisableRedrawRegions();
+		if (Shared::g_enableFullDirty)
+			g_hackVisual.as<IDCompositionVisualDebug>()->EnableRedrawRegions();
+		else
+			g_hackVisual.as<IDCompositionVisualDebug>()->DisableRedrawRegions();
 		LOG_IF_FAILED(uDwm::CDesktopManager::s_pDesktopManagerInstance->GetDCompDevice()->Commit());
 	}
 
@@ -520,30 +491,30 @@ HRESULT GlassFramework::Startup()
 	uDwm::GetAddressFromSymbolMap("CTopLevelWindow::CloneVisualTreeForLivePreview", g_CTopLevelWindow_CloneVisualTreeForLivePreview_Org);
 
 	g_CreateRoundRectRgn_Org = reinterpret_cast<decltype(g_CreateRoundRectRgn_Org)>(HookHelper::WriteIAT(uDwm::g_moduleHandle, "gdi32.dll", "CreateRoundRectRgn", MyCreateRoundRectRgn));
-	
-	return HookHelper::Detours::Write([]()
-	{
-		HookHelper::Detours::Attach(&g_CDrawGeometryInstruction_Create_Org, MyCDrawGeometryInstruction_Create);
-		HookHelper::Detours::Attach(&g_CTopLevelWindow_UpdateNCAreaBackground_Org, MyCTopLevelWindow_UpdateNCAreaBackground);
-		HookHelper::Detours::Attach(&g_CTopLevelWindow_UpdateClientBlur_Org, MyCTopLevelWindow_UpdateClientBlur);
-		HookHelper::Detours::Attach(&g_CAccent_UpdateAccentPolicy_Org, MyCAccent_UpdateAccentPolicy);
-		HookHelper::Detours::Attach(&g_CAccent__UpdateSolidFill_Org, MyCAccent__UpdateSolidFill);
-		HookHelper::Detours::Attach(&g_CRenderDataVisual_AddInstruction_Org, MyCRenderDataVisual_AddInstruction);
-		HookHelper::Detours::Attach(&g_CTopLevelWindow_Destructor_Org, MyCTopLevelWindow_Destructor);
-		if (os::buildNumber == os::build_w11_21h2)
-		{
-			HookHelper::Detours::Attach(&g_CTopLevelWindow_UpdateSystemBackdropVisual_Org, MyCTopLevelWindow_UpdateSystemBackdropVisual);
-		}
-		if (os::buildNumber >= os::build_w11_22h2)
-		{
-			HookHelper::Detours::Attach(&g_CTopLevelWindow_CalculateBackgroundType_Org, MyCTopLevelWindow_CalculateBackgroundType);
-		}
-		HookHelper::Detours::Attach(&g_CAnimatedGlassSheet_OnRectUpdated_Org, MyCAnimatedGlassSheet_OnRectUpdated);
-		HookHelper::Detours::Attach(&g_CAnimatedGlassSheet_Destructor_Org, MyCAnimatedGlassSheet_Destructor);
 
-		//HookHelper::Detours::Attach(&g_CLivePreview__UpdateGlassVisual_Org, MyCLivePreview__UpdateGlassVisual);
-		HookHelper::Detours::Attach(&g_CTopLevelWindow_CloneVisualTreeForLivePreview_Org, MyCTopLevelWindow_CloneVisualTreeForLivePreview);
-	});
+	return HookHelper::Detours::Write([]()
+		{
+			HookHelper::Detours::Attach(&g_CDrawGeometryInstruction_Create_Org, MyCDrawGeometryInstruction_Create);
+			HookHelper::Detours::Attach(&g_CTopLevelWindow_UpdateNCAreaBackground_Org, MyCTopLevelWindow_UpdateNCAreaBackground);
+			HookHelper::Detours::Attach(&g_CTopLevelWindow_UpdateClientBlur_Org, MyCTopLevelWindow_UpdateClientBlur);
+			HookHelper::Detours::Attach(&g_CAccent_UpdateAccentPolicy_Org, MyCAccent_UpdateAccentPolicy);
+			HookHelper::Detours::Attach(&g_CAccent__UpdateSolidFill_Org, MyCAccent__UpdateSolidFill);
+			HookHelper::Detours::Attach(&g_CRenderDataVisual_AddInstruction_Org, MyCRenderDataVisual_AddInstruction);
+			HookHelper::Detours::Attach(&g_CTopLevelWindow_Destructor_Org, MyCTopLevelWindow_Destructor);
+			if (os::buildNumber == os::build_w11_21h2)
+			{
+				HookHelper::Detours::Attach(&g_CTopLevelWindow_UpdateSystemBackdropVisual_Org, MyCTopLevelWindow_UpdateSystemBackdropVisual);
+			}
+			if (os::buildNumber >= os::build_w11_22h2)
+			{
+				HookHelper::Detours::Attach(&g_CTopLevelWindow_CalculateBackgroundType_Org, MyCTopLevelWindow_CalculateBackgroundType);
+			}
+			HookHelper::Detours::Attach(&g_CAnimatedGlassSheet_OnRectUpdated_Org, MyCAnimatedGlassSheet_OnRectUpdated);
+			HookHelper::Detours::Attach(&g_CAnimatedGlassSheet_Destructor_Org, MyCAnimatedGlassSheet_Destructor);
+
+			//HookHelper::Detours::Attach(&g_CLivePreview__UpdateGlassVisual_Org, MyCLivePreview__UpdateGlassVisual);
+			HookHelper::Detours::Attach(&g_CTopLevelWindow_CloneVisualTreeForLivePreview_Org, MyCTopLevelWindow_CloneVisualTreeForLivePreview);
+		});
 }
 
 void GlassFramework::Shutdown()
@@ -551,28 +522,28 @@ void GlassFramework::Shutdown()
 	*dwmcore::CCommonRegistryData::m_dwOverlayTestMode = g_dwOverlayTestMode;
 
 	HookHelper::Detours::Write([]()
-	{
-		HookHelper::Detours::Detach(&g_CDrawGeometryInstruction_Create_Org, MyCDrawGeometryInstruction_Create);
-		HookHelper::Detours::Detach(&g_CTopLevelWindow_UpdateNCAreaBackground_Org, MyCTopLevelWindow_UpdateNCAreaBackground);
-		HookHelper::Detours::Detach(&g_CTopLevelWindow_UpdateClientBlur_Org, MyCTopLevelWindow_UpdateClientBlur);
-		HookHelper::Detours::Detach(&g_CAccent_UpdateAccentPolicy_Org, MyCAccent_UpdateAccentPolicy);
-		HookHelper::Detours::Detach(&g_CAccent__UpdateSolidFill_Org, MyCAccent__UpdateSolidFill);
-		HookHelper::Detours::Detach(&g_CRenderDataVisual_AddInstruction_Org, MyCRenderDataVisual_AddInstruction);
-		HookHelper::Detours::Detach(&g_CTopLevelWindow_Destructor_Org, MyCTopLevelWindow_Destructor);
-		if (os::buildNumber == os::build_w11_21h2)
 		{
-			HookHelper::Detours::Detach(&g_CTopLevelWindow_UpdateSystemBackdropVisual_Org, MyCTopLevelWindow_UpdateSystemBackdropVisual);
-		}
-		if (os::buildNumber >= os::build_w11_22h2)
-		{
-			HookHelper::Detours::Detach(&g_CTopLevelWindow_CalculateBackgroundType_Org, MyCTopLevelWindow_CalculateBackgroundType);
-		}
-		HookHelper::Detours::Detach(&g_CAnimatedGlassSheet_OnRectUpdated_Org, MyCAnimatedGlassSheet_OnRectUpdated);
-		HookHelper::Detours::Detach(&g_CAnimatedGlassSheet_Destructor_Org, MyCAnimatedGlassSheet_Destructor);
+			HookHelper::Detours::Detach(&g_CDrawGeometryInstruction_Create_Org, MyCDrawGeometryInstruction_Create);
+			HookHelper::Detours::Detach(&g_CTopLevelWindow_UpdateNCAreaBackground_Org, MyCTopLevelWindow_UpdateNCAreaBackground);
+			HookHelper::Detours::Detach(&g_CTopLevelWindow_UpdateClientBlur_Org, MyCTopLevelWindow_UpdateClientBlur);
+			HookHelper::Detours::Detach(&g_CAccent_UpdateAccentPolicy_Org, MyCAccent_UpdateAccentPolicy);
+			HookHelper::Detours::Detach(&g_CAccent__UpdateSolidFill_Org, MyCAccent__UpdateSolidFill);
+			HookHelper::Detours::Detach(&g_CRenderDataVisual_AddInstruction_Org, MyCRenderDataVisual_AddInstruction);
+			HookHelper::Detours::Detach(&g_CTopLevelWindow_Destructor_Org, MyCTopLevelWindow_Destructor);
+			if (os::buildNumber == os::build_w11_21h2)
+			{
+				HookHelper::Detours::Detach(&g_CTopLevelWindow_UpdateSystemBackdropVisual_Org, MyCTopLevelWindow_UpdateSystemBackdropVisual);
+			}
+			if (os::buildNumber >= os::build_w11_22h2)
+			{
+				HookHelper::Detours::Detach(&g_CTopLevelWindow_CalculateBackgroundType_Org, MyCTopLevelWindow_CalculateBackgroundType);
+			}
+			HookHelper::Detours::Detach(&g_CAnimatedGlassSheet_OnRectUpdated_Org, MyCAnimatedGlassSheet_OnRectUpdated);
+			HookHelper::Detours::Detach(&g_CAnimatedGlassSheet_Destructor_Org, MyCAnimatedGlassSheet_Destructor);
 
-		//HookHelper::Detours::Detach(&g_CLivePreview__UpdateGlassVisual_Org, MyCLivePreview__UpdateGlassVisual);
-		HookHelper::Detours::Detach(&g_CTopLevelWindow_CloneVisualTreeForLivePreview_Org, MyCTopLevelWindow_CloneVisualTreeForLivePreview);
-	});
+			//HookHelper::Detours::Detach(&g_CLivePreview__UpdateGlassVisual_Org, MyCLivePreview__UpdateGlassVisual);
+			HookHelper::Detours::Detach(&g_CTopLevelWindow_CloneVisualTreeForLivePreview_Org, MyCTopLevelWindow_CloneVisualTreeForLivePreview);
+		});
 
 	if (g_CreateRoundRectRgn_Org)
 	{

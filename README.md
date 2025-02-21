@@ -14,7 +14,7 @@ You can use DWM Tweaker (Windhawk mod) with this build of OpenGlass! You may fin
 ![demo](https://github.com/user-attachments/assets/faa1ca88-4f95-4287-a78c-2d8171092e73)
 > *.msstyles theme used for screenshots: [Aero10 by vaporvance](https://www.deviantart.com/vaporvance/art/Aero10-for-Windows-10-1903-22H2-909711949)*
 
-> *additional software used: [Windhawk](https://windhawk.net/), [Aero Window Manager](https://github.com/Dulappy/aero-window-manager) by @Dulappy, [explorer7](https://github.com/explorer7-team/source) by the explorer7 team*
+> *additional software used: [Windhawk](https://windhawk.net/), [Aero Window Manager](https://github.com/Dulappy/aero-window-manager) by @Dulappy, [explorer7](https://github.com/explorer7-team/source) by the explorer7 team, [Echelon](https://echelon-theme.github.io/) by @travy-patty*
 
 ## Install instructions
 Go look at the official `legacy` branch of OpenGlass [here](https://github.com/ALTaleX531/OpenGlass?tab=readme-ov-file#how-to-use-this-software). It is recommended to use the Windhawk method for better overall stability.

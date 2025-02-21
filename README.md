@@ -11,10 +11,10 @@ You can use DWM Tweaker (Windhawk mod) with this build of OpenGlass! You may fin
 > OpenGlass does not support and is not intended to support Windows Insider Preview, so if you want to use it in these Windows versions please do it at your own risk. It will do nothing if it isn't compatible.
 
 ## Demonstration
-![Screenshot_1](https://github.com/user-attachments/assets/87bd340e-f60f-427b-83dd-d5470af3628a)
+![image](https://github.com/user-attachments/assets/6f22df01-f2cd-4d68-ba13-735ac2e3ef89)
 > *.msstyles theme used for screenshots: [Aero10 by vaporvance](https://www.deviantart.com/vaporvance/art/Aero10-for-Windows-10-1903-22H2-909711949)*
 
-> *additional software used: [Windhawk](https://windhawk.net/), [Aero Window Manager](https://github.com/Dulappy/aero-window-manager) by @Dulappy*
+> *additional software used: [Windhawk](https://windhawk.net/), [Aero Window Manager](https://github.com/Dulappy/aero-window-manager) by @Dulappy, [explorer7](https://github.com/explorer7-team/source) by the explorer7 team*
 
 ## Install instructions
 Go look at the official `legacy` branch of OpenGlass [here](https://github.com/ALTaleX531/OpenGlass?tab=readme-ov-file#how-to-use-this-software). It is recommended to use the Windhawk method for better overall stability.
